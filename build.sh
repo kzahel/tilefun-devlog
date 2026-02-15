@@ -101,7 +101,7 @@ for post in $(ls -r "$POSTS_DIR"/*.md 2>/dev/null); do
         h=$(echo "$dims" | cut -dx -f2)
         style=" style=\"aspect-ratio: $w/$h\""
       fi
-      echo "      <video controls playsinline${style}>" >> "$OUT"
+      echo "      <video controls playsinline muted loop${style}>" >> "$OUT"
       echo "        <source src=\"$url\" type=\"video/mp4\">" >> "$OUT"
       echo '      </video>' >> "$OUT"
     # ![alt](url) -> <img> tag
@@ -121,6 +121,15 @@ done
 # Close HTML
 cat >> "$OUT" <<'FOOT'
   </main>
+  <script>
+    const observer = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) e.target.play();
+        else e.target.pause();
+      }
+    }, { threshold: 0.5 });
+    document.querySelectorAll("video").forEach(v => observer.observe(v));
+  </script>
 </body>
 </html>
 FOOT
