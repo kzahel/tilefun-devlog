@@ -42,6 +42,10 @@ cat > "$OUT" <<'HEAD'
     .entry p { margin-bottom: 1rem; }
     .entry video, .entry img { max-width: 100%; max-height: 70vh; border-radius: 4px; margin: 1rem 0; }
     .entry video { background: #000; }
+    .entry h3 { font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+    .entry pre { background: #1e1e1e; color: #d4d4d4; padding: 1rem; border-radius: 4px; overflow-x: auto; margin: 1rem 0; font-size: 0.85rem; line-height: 1.5; }
+    .entry code { font-family: "SF Mono", Menlo, Consolas, monospace; }
+    .entry p code { background: #eee; padding: 0.15em 0.35em; border-radius: 3px; font-size: 0.9em; }
     a { color: #0066cc; }
   </style>
 </head>
@@ -87,14 +91,41 @@ for post in $(ls -r "$POSTS_DIR"/*.md 2>/dev/null); do
     start_line=2
   fi
 
+  in_code=false
   tail -n +$start_line "$post" | while IFS= read -r line; do
-    # Skip empty lines
+    # Code fence toggle
+    if echo "$line" | grep -qE '^```'; then
+      if $in_code; then
+        echo '      </code></pre>' >> "$OUT"
+        in_code=false
+      else
+        echo '      <pre><code>' >> "$OUT"
+        in_code=true
+      fi
+      continue
+    fi
+
+    # Inside code block: escape HTML and emit raw
+    if $in_code; then
+      escaped=$(echo "$line" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+      echo "$escaped" >> "$OUT"
+      continue
+    fi
+
+    # Skip empty lines outside code
     if [ -z "$line" ]; then
       continue
     fi
 
+    # Sub-headers (## or ###)
+    if echo "$line" | grep -qE '^### '; then
+      text=$(echo "$line" | sed 's/^### //')
+      echo "      <h4>$text</h4>" >> "$OUT"
+    elif echo "$line" | grep -qE '^## '; then
+      text=$(echo "$line" | sed 's/^## //')
+      echo "      <h3>$text</h3>" >> "$OUT"
     # [video WxH](url) or [video](url) -> <video> tag
-    if echo "$line" | grep -qE '^\[video[ ]?.*\]\(.*\)$'; then
+    elif echo "$line" | grep -qE '^\[video[ ]?.*\]\(.*\)$'; then
       url=$(echo "$line" | sed -E 's/^\[video[^]]*\]\((.*)\)$/\1/')
       dims=$(echo "$line" | sed -E 's/^\[video ?([0-9]+x[0-9]+)?\]\(.*\)$/\1/')
       style=""
@@ -111,9 +142,11 @@ for post in $(ls -r "$POSTS_DIR"/*.md 2>/dev/null); do
       alt=$(echo "$line" | sed -E 's/^!\[(.*)\]\(.*\)$/\1/')
       url=$(echo "$line" | sed -E 's/^!\[.*\]\((.*)\)$/\1/')
       echo "      <img src=\"$url\" alt=\"$alt\">" >> "$OUT"
-    # Regular text -> <p> tag (convert [text](url) to <a> links)
+    # Regular text -> <p> tag (convert inline markdown)
     else
-      html=$(echo "$line" | sed -E 's/\[([^]]+)\]\(([^)]+)\)/<a href="\2">\1<\/a>/g')
+      html=$(echo "$line" \
+        | sed -E 's/\[([^]]+)\]\(([^)]+)\)/<a href="\2">\1<\/a>/g' \
+        | sed -E 's/`([^`]+)`/<code>\1<\/code>/g')
       echo "      <p>$html</p>" >> "$OUT"
     fi
   done
