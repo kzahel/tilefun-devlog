@@ -50,7 +50,9 @@ cat > "$OUT" <<'HEAD'
     <h1>Tilefun Devlog</h1>
     <p>Building a creative-mode 2D tile game</p>
     <nav>
-      <a href="https://github.com/kzahel/tilefun">Source</a>
+      <a href="https://kyle.graehl.org/tilefun/">Play</a>
+      <a href="https://github.com/kzahel/tilefun">GitHub</a>
+      <a href="https://graehlarts.com/">Graehl Arts</a>
     </nav>
   </header>
   <main>
@@ -109,9 +111,10 @@ for post in $(ls -r "$POSTS_DIR"/*.md 2>/dev/null); do
       alt=$(echo "$line" | sed -E 's/^!\[(.*)\]\(.*\)$/\1/')
       url=$(echo "$line" | sed -E 's/^!\[.*\]\((.*)\)$/\1/')
       echo "      <img src=\"$url\" alt=\"$alt\">" >> "$OUT"
-    # Regular text -> <p> tag
+    # Regular text -> <p> tag (convert [text](url) to <a> links)
     else
-      echo "      <p>$line</p>" >> "$OUT"
+      html=$(echo "$line" | sed -E 's/\[([^]]+)\]\(([^)]+)\)/<a href="\2">\1<\/a>/g')
+      echo "      <p>$html</p>" >> "$OUT"
     fi
   done
 
