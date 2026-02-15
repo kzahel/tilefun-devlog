@@ -40,7 +40,7 @@ cat > "$OUT" <<'HEAD'
     .entry h2 { font-size: 1.3rem; font-weight: 600; margin-bottom: 0.25rem; }
     .entry .date { color: #888; font-size: 0.9rem; margin-bottom: 1rem; }
     .entry p { margin-bottom: 1rem; }
-    .entry video, .entry img { max-width: 100%; border-radius: 4px; margin: 1rem 0; }
+    .entry video, .entry img { max-width: 100%; max-height: 70vh; border-radius: 4px; margin: 1rem 0; }
     .entry video { background: #000; }
     a { color: #0066cc; }
   </style>
@@ -91,10 +91,17 @@ for post in $(ls -r "$POSTS_DIR"/*.md 2>/dev/null); do
       continue
     fi
 
-    # [video](url) -> <video> tag
-    if echo "$line" | grep -qE '^\[video\]\(.*\)$'; then
-      url=$(echo "$line" | sed -E 's/^\[video\]\((.*)\)$/\1/')
-      echo '      <video controls playsinline>' >> "$OUT"
+    # [video WxH](url) or [video](url) -> <video> tag
+    if echo "$line" | grep -qE '^\[video[ ]?.*\]\(.*\)$'; then
+      url=$(echo "$line" | sed -E 's/^\[video[^]]*\]\((.*)\)$/\1/')
+      dims=$(echo "$line" | sed -E 's/^\[video ?([0-9]+x[0-9]+)?\]\(.*\)$/\1/')
+      style=""
+      if [ -n "$dims" ]; then
+        w=$(echo "$dims" | cut -dx -f1)
+        h=$(echo "$dims" | cut -dx -f2)
+        style=" style=\"aspect-ratio: $w/$h\""
+      fi
+      echo "      <video controls playsinline${style}>" >> "$OUT"
       echo "        <source src=\"$url\" type=\"video/mp4\">" >> "$OUT"
       echo '      </video>' >> "$OUT"
     # ![alt](url) -> <img> tag

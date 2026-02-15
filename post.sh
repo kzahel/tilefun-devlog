@@ -48,6 +48,12 @@ gh release create "$TAG" "$MP4" --repo "$REPO" --title "$TAG" --notes "$TEXT"
 
 VIDEO_URL="https://github.com/$REPO/releases/download/$TAG/$TAG.mp4"
 
+# Extract dimensions from compressed video
+DIMENSIONS=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$MP4")
+WIDTH=$(echo "$DIMENSIONS" | cut -d',' -f1)
+HEIGHT=$(echo "$DIMENSIONS" | cut -d',' -f2)
+echo "Video dimensions: ${WIDTH}x${HEIGHT}"
+
 # Determine post filename (handle multiple posts per day)
 POST_FILE="$POSTS_DIR/$DATE.md"
 if [ -f "$POST_FILE" ]; then
@@ -58,7 +64,7 @@ fi
 cat > "$POST_FILE" <<EOF
 $TEXT
 
-[video]($VIDEO_URL)
+[video ${WIDTH}x${HEIGHT}]($VIDEO_URL)
 EOF
 
 # Commit and push (GitHub Action builds the HTML)
