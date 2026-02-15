@@ -3,7 +3,7 @@ set -euo pipefail
 
 REPO="kzahel/tilefun-devlog"
 DEVLOG_DIR="$(cd "$(dirname "$0")" && pwd)"
-INDEX="$DEVLOG_DIR/index.html"
+POSTS_DIR="$DEVLOG_DIR/posts"
 
 usage() {
   echo "Usage: post.sh <video-file> <text>"
@@ -26,7 +26,6 @@ if [ ! -f "$VIDEO" ]; then
 fi
 
 DATE=$(date +%Y-%m-%d)
-DATE_DISPLAY=$(date +"%B %-d, %Y")
 TAG="devlog-$DATE"
 MP4="/tmp/$TAG.mp4"
 
@@ -49,28 +48,25 @@ gh release create "$TAG" "$MP4" --repo "$REPO" --title "$TAG" --notes "$TEXT"
 
 VIDEO_URL="https://github.com/$REPO/releases/download/$TAG/$TAG.mp4"
 
-# Build the new entry HTML
-ENTRY=$(cat <<ENTRY_EOF
+# Determine post filename (handle multiple posts per day)
+POST_FILE="$POSTS_DIR/$DATE.md"
+if [ -f "$POST_FILE" ]; then
+  POST_FILE="$POSTS_DIR/$DATE-$COUNTER.md"
+fi
 
-    <div class="entry">
-      <div class="date">$DATE_DISPLAY</div>
-      <p>$TEXT</p>
-      <video controls playsinline>
-        <source src="$VIDEO_URL" type="video/mp4">
-      </video>
-    </div>
-ENTRY_EOF
-)
+# Write markdown post
+cat > "$POST_FILE" <<EOF
+$TEXT
 
-# Insert after <main>
-sed -i '' "s|<main>|<main>$ENTRY|" "$INDEX"
+[video]($VIDEO_URL)
+EOF
 
-# Commit and push
+# Commit and push (GitHub Action builds the HTML)
 cd "$DEVLOG_DIR"
-git add index.html
+git add posts/
 git commit -m "$TAG: $TEXT"
 git push
 
 echo ""
-echo "Posted! $VIDEO_URL"
-echo "Site will update shortly at https://kyle.graehl.org/tilefun-devlog/"
+echo "Posted! Site will rebuild automatically."
+echo "https://kyle.graehl.org/tilefun-devlog/"
